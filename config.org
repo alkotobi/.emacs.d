@@ -1,0 +1,837 @@
+* Looking
+#+begin_src emacs-lisp
+      (defvar efs/frame-transparency '(100 . 100))
+      (defvar efs/default-font-size 250)
+      (defvar efs/default-variable-font-size 250)
+      (set-face-attribute 'default nil :font "Fira Code Retina" :height efs/default-font-size)
+      (set-face-attribute 'fixed-pitch nil :font "Fira Code Retina" :height efs/default-font-size)
+      (set-face-attribute 'variable-pitch nil :font "Cantarell" :height efs/default-variable-font-size :weight 'regular)
+    (setq inhibit-startup-message t)
+     (scroll-bar-mode -1)
+     ; Disable visible scrollbar
+   (tool-bar-mode 1)          ; Disable the toolbar
+   (tooltip-mode -1)           ; Disable tooltips
+   (set-fringe-mode 10)        ; Give some breathing room
+   (menu-bar-mode 1)            ; Disable the menu bar
+  ;; Set up the visible bell
+  (setq visible-bell t)
+   (column-number-mode)
+   (global-display-line-numbers-mode t)
+   ;; Set frame transparency
+   (set-frame-parameter (selected-frame) 'alpha efs/frame-transparency)
+   (add-to-list 'default-frame-alist `(alpha . ,efs/frame-transparency))
+   (set-frame-parameter (selected-frame) 'fullscreen 'maximized)
+   (add-to-list 'default-frame-alist '(fullscreen . maximized))
+  ;; Disable line numbers for some modes
+                        (dolist (mode '(org-mode-hook
+                                        term-mode-hook
+                                        shell-mode-hook
+                                        treemacs-mode-hook
+                                        eshell-mode-hook))
+                          (add-hook mode (lambda () (display-line-numbers-mode 0))))
+      (use-package rainbow-delimiters
+        :hook (prog-mode . rainbow-delimiters-mode))
+  (fset 'yes-or-no-p 'y-or-n-p)
+      (message "Looking working")
+ 
+#+end_src
+
+* Packages initialization
+#+begin_src emacs-lisp
+  (require 'package)
+  (setq package-archives '(("melpa" . "https://melpa.org/packages/")
+                           ("org" . "https://orgmode.org/elpa/")
+                           ("elpa" . "https://elpa.gnu.org/packages/")))
+  (setq gnutls-algorithm-priority "NORMAL:-VERS-TLS1.3")
+  (package-initialize)
+  (unless package-archive-contents
+  (package-refresh-contents))
+  ;; Initialize use-package on non-Linux platforms
+  (unless (package-installed-p 'use-package)
+  (package-install 'use-package))
+  (require 'use-package)
+  (setq use-package-always-ensure t)
+  (message "packages initialized")
+
+#+end_src
+
+* General keybinding
+#+begin_src emacs-lisp
+;; Make ESC quit prompts
+ (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
+#+end_src
+
+* General pkg
+#+begin_src emacs-lisp
+   (use-package general
+                     :config
+                     (general-create-definer rune/leader-keys
+                       :keymaps '(normal insert visual emacs)
+                       :prefix "SPC"
+                       :global-prefix "M-SPC")
+
+                     (rune/leader-keys
+                       "t"  '(:ignore t :which-key "toggles")
+                       "tt" '(counsel-load-theme :which-key "choose theme")))
+
+#+end_src
+
+* Evil pkg
+#+begin_src emacs-lisp
+   (use-package evil
+                  :init
+                  (setq evil-want-integration t)
+                  (setq evil-want-keybinding nil)
+                  (setq evil-want-C-u-scroll t)
+                  (setq evil-want-C-i-jump nil)
+                  :config
+                  (evil-mode 1)
+                  ;(define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
+                  ;(define-key evil-insert-state-map (kbd "C-h") 'evil-delete-backward-char-and-join)
+
+                  ;; Use visual line motions even outside of visual-line-mode buffers
+                  ;(evil-global-set-key 'motion "j" 'evil-next-visual-line)
+                  ;(evil-global-set-key 'motion "k" 'evil-previous-visual-line)
+
+                  (evil-set-initial-state 'messages-buffer-mode 'normal)
+                  (evil-set-initial-state 'dashboard-mode 'normal))
+
+                (use-package evil-collection
+                  :after evil
+                  :config
+                  (evil-collection-init))
+
+#+end_src
+
+* command-log-mode pkg
+#+begin_src emacs-lisp
+  (use-package command-log-mode)
+  (message "command-log-mode loaded")
+#+end_src
+
+* which-key pkg
+
+#+begin_src emacs-lisp
+
+  (use-package which-key
+    :init (which-key-mode)
+    :diminish which-key-mode
+    :config
+    (setq which-key-idle-delay 1))
+  (message "which-key loaded")
+#+end_src
+** info
+which-key is a minor mode for Emacs that displays the key bindings
+following your currently entered incomplete command (a prefix) in a popup.
+For example, after enabling the minor mode if you enter C-x
+and wait for the default of 1 second the minibuffer will expand with all
+of the available key bindings that follow C-x (or as many as space allows
+given your settings). This includes prefixes like C-x 8 which are shown in a
+different face. Screenshots of what the popup will look like are included below.
+which-key started as a rewrite of guide-key-mode,
+but the feature sets have diverged to a certain extent.
+
+* ivy pkg
+#+begin_src emacs-lisp
+  (use-package ivy
+                :diminish
+                :bind (("C-s" . swiper)
+                       :map ivy-minibuffer-map
+                       ("TAB" . ivy-alt-done)
+                       ("C-l" . ivy-alt-done)
+                       ("C-j" . ivy-next-line)
+                       ("C-k" . ivy-previous-line)
+                       :map ivy-switch-buffer-map
+                       ("C-k" . ivy-previous-line)
+                       ("C-l" . ivy-done)
+                       ("C-d" . ivy-switch-buffer-kill)
+                       :map ivy-reverse-i-search-map
+                       ("C-k" . ivy-previous-line)
+                       ("C-d" . ivy-reverse-i-search-kill))
+                :config
+                (ivy-mode 1))
+ (use-package ivy-rich
+              :init
+              (ivy-rich-mode 1))
+
+  (message "ivy mode loaded")
+#+end_src
+
+* counsel pkg
+#+begin_src emacs-lisp
+  (use-package counsel
+              :bind (("C-M-j" . 'counsel-switch-buffer)
+                     :map minibuffer-local-map
+                     ("C-r" . 'counsel-minibuffer-history))
+              :custom
+              (counsel-linux-app-format-function #'counsel-linux-app-format-function-name-only)
+              :config
+              (counsel-mode 1))
+(message "counsel loaded")
+#+end_src
+
+* helpful pkg
+#+begin_src emacs-lisp
+ (use-package helpful
+              :custom
+              (counsel-describe-function-function #'helpful-callable)
+              (counsel-describe-variable-function #'helpful-variable)
+              :bind
+              ([remap describe-function] . counsel-describe-function)
+              ([remap describe-command] . helpful-command)
+              ([remap describe-variable] . counsel-describe-variable)
+              ([remap describe-key] . helpful-key))
+(message "helpful loaded")
+#+end_src
+
+* hydra pkg
+#+begin_src emacs-lisp
+(use-package hydra)
+
+            (defhydra hydra-text-scale (:timeout 4)
+              "scale text"
+              ("j" text-scale-increase "in")
+              ("k" text-scale-decrease "out")
+              ("f" nil "finished" :exit t))
+
+            (rune/leader-keys
+              "ts" '(hydra-text-scale/body :which-key "scale text"))
+
+(message "hydra loaded")
+#+end_src
+
+* lsp pkg
+#+begin_src emacs-lisp
+  (defun efs/lsp-mode-setup ()
+              (setq lsp-headerline-breadcrumb-segments '(path-up-to-project file symbols))
+              (lsp-headerline-breadcrumb-mode))
+
+            (use-package lsp-mode
+              :commands (lsp lsp-deferred)
+              :hook (lsp-mode . efs/lsp-mode-setup)
+              :init
+              (setq lsp-keymap-prefix "C-c l")  ;; Or 'C-l', 's-l'
+              :config
+              (lsp-enable-which-key-integration t))
+
+
+          (use-package lsp-ui
+            :hook (lsp-mode . lsp-ui-mode)
+            :custom
+            (lsp-ui-doc-position 'bottom))
+
+          (use-package lsp-treemacs
+            :after lsp)
+
+          (use-package lsp-ivy)
+(message "lsp loaded")
+
+#+end_src
+
+* dap pkg
+debugger
+#+begin_src emacs-lisp
+ (use-package dap-mode
+          ;; Uncomment the config below if you want all UI panes to be hidden by default!
+          ;; :custom
+          ;; (lsp-enable-dap-auto-configure nil)
+          ;; :config
+          ;; (dap-ui-mode 1)
+
+          :config
+          ;; Set up Node debugging
+          (require 'dap-node)
+          (dap-node-setup) ;; Automatically installs Node debug adapter if needed
+
+          ;; Bind `C-c l d` to `dap-hydra` for easy access
+          (general-define-key
+            :keymaps 'lsp-mode-map
+            :prefix lsp-keymap-prefix
+            "d" '(dap-hydra t :wk "debugger")))
+(message "dap loaded")
+#+end_src
+
+* all-the-icons
+#+begin_src emacs-lisp
+  (use-package all-the-icons
+      :ensure t)
+  (message "all-the-icons loaded")
+#+end_src
+
+* doom pkg
+#+begin_src emacs-lisp
+  (use-package doom-themes
+    :ensure t
+    :init
+    (load-theme 'doom-dracula  t)
+    (doom-themes-treemacs-config)
+    (setq neo-global--window nil)
+    (setq hl-line-sticky-flag nil)
+    (setq neo-vc-integration nil)
+    (setq neotree-dir-button-keymap nil)
+    (setq neotree-file-button-keymap nil)
+    (setq neo-path--file-short-name nil)
+    (setq neo-vc-for-node nil)
+    (setq neo-buffer--insert-fold-symbol nil)
+    (setq neo-buffer--node-list-set nil)
+    (setq neo-buffer--newline-and-begin nil)
+    (setq neo-global--select-window nil)
+    (setq neo-buffer--insert-file-entry nil)
+    (setq neo-buffer--insert-dir-entry nil)
+    (setq neo-buffer--insert-root-entry nil))
+  (use-package doom-modeline
+  :ensure t
+  :hook (after-init . doom-modeline-mode))
+
+  (message "doom loaded")
+
+#+end_src
+
+* helm pkg
+#+begin_src emacs-lisp
+ (use-package helm
+  :ensure t
+  :init
+  (
+   helm-mode 1)
+  :bind
+    ("C-x C-f" . 'helm-find-files)
+    ("C-x C-b" . 'helm-buffers-list)
+    ("M-x" . 'helm-M-x))
+  (helm-autoresize-mode 1)
+ (use-package helm-lsp
+    :ensure t
+    :commands helm-lsp-workspace-symbol)
+(message "helm loaded")
+#+end_src
+
+* company
+#+begin_src emacs-lisp
+ (use-package company
+     :ensure t
+     :config
+     (setq company-idle-delay 0)
+     (setq company-minimum-prefix-length 2))
+   (with-eval-after-load 'company
+     (define-key company-active-map (kbd "M-n") nil)
+     (define-key company-active-map (kbd "M-p") nil)
+     (define-key company-active-map (kbd "C-n") #'company-select-next)
+     (define-key company-active-map (kbd "C-p") #'company-select-previous)
+     (define-key company-active-map (kbd "<tab>") #'company-abort))
+   (add-hook 'c++-mode-hook 'yas-minor-mode)
+   (add-hook 'c-mode-hook 'yas-minor-mode)
+   (with-eval-after-load 'company
+     (add-hook 'c++-mode-hook 'company-mode)
+     (add-hook 'c-mode-hook 'company-mode))
+   (add-hook 'emacs-lisp-mode-hook 'eldoc-mode)
+   (add-hook 'emacs-lisp-mode-hook 'yas-minor-mode)
+   (add-hook 'emacs-lisp-mode-hook 'company-mode)
+   (setq lsp-completion-provider :capf)
+   (defun check-expansion ()
+       (save-excursion
+         (if (looking-at "\\_>") t
+           (backward-char 1)
+           (if (looking-at "\\.") t
+             (backward-char 1)
+             (if (looking-at "->") t nil)))))
+     (defun do-yas-expand ()
+       (let ((yas/fallback-behavior 'return-nil))
+         (yas/expand)))
+     (defun tab-indent-or-complete ()
+       (interactive)
+       (if (minibufferp)
+           (minibuffer-complete)
+         (if (or (not yas/minor-mode)
+                 (null (do-yas-expand)))
+             (if (check-expansion)
+                 (company-complete-common)
+               (indent-for-tab-command)))))
+   (global-set-key [tab] 'tab-indent-or-complete)
+   (add-hook 'after-init-hook 'global-company-mode)
+(message "company loaded")
+#+end_src
+
+* yasnippet
+#+begin_src emacs-lisp
+   (use-package yasnippet
+      :ensure t
+      :config
+        (yas-reload-all))
+    (define-key global-map (kbd "C-c C-y") 'yas-new-snippet)
+    (defun yas/org-very-safe-expand ()
+    (let ((yas/fallback-behavior 'return-nil)) (yas/expand)))
+    (add-hook 'org-mode-hook
+    (lambda ()
+    (make-variable-buffer-local 'yas/trigger-key)
+    (setq yas/trigger-key [tab])
+    (add-to-list 'org-tab-first-hook 'yas/org-very-safe-expand)
+    (define-key yas/keymap [tab] 'yas/next-field)))
+  (use-package yasnippet-snippets :ensure t)
+
+  (message "yasnippet loaded")
+#+end_src
+* org-bullets
+#+begin_src emacs-lisp
+  (use-package org-bullets
+    :ensure t
+    :config
+    (add-hook 'org-mode-hook (lambda () (org-bullets-mode))))
+(message "org-bullets loaded")
+#+end_src
+
+* quickrun
+#+begin_src emacs-lisp
+  (use-package quickrun
+    :ensure t
+    :bind("<f5>". 'quickrun-shell))
+(message "quickrun loaded")
+#+end_src
+
+* treemacs
+#+begin_src emacs-lisp
+(use-package treemacs
+  :ensure t
+  :defer t
+  :init
+  (with-eval-after-load 'winum
+    (define-key winum-keymap (kbd "M-0") #'treemacs-select-window))
+  :config
+  (progn
+    (setq treemacs-collapse-dirs                 (if treemacs-python-executable 3 0)
+          treemacs-deferred-git-apply-delay      0.5
+          treemacs-display-in-side-window        t
+          treemacs-eldoc-display                 t
+          treemacs-file-event-delay              5000
+          treemacs-file-extension-regex          treemacs-last-period-regex-value
+          treemacs-file-follow-delay             0.2
+          treemacs-follow-after-init             t
+          treemacs-git-command-pipe              ""
+          treemacs-goto-tag-strategy             'refetch-index
+          treemacs-indentation                   2
+          treemacs-indentation-string            " "
+          treemacs-is-never-other-window         nil
+          treemacs-max-git-entries               5000
+          treemacs-missing-project-action        'ask
+          treemacs-no-png-images                 nil
+          treemacs-no-delete-other-windows       t
+          treemacs-project-follow-cleanup        nil
+          treemacs-persist-file                  (expand-file-name ".cache/treemacs-persist" user-emacs-directory)
+          treemacs-position                      'left
+          treemacs-recenter-distance             0.1
+          treemacs-recenter-after-file-follow    nil
+          treemacs-recenter-after-tag-follow     nil
+          treemacs-recenter-after-project-jump   'always
+          treemacs-recenter-after-project-expand 'on-distance
+          treemacs-show-cursor                   nil
+          treemacs-show-hidden-files             t
+          treemacs-silent-filewatch              nil
+          treemacs-silent-refresh                nil
+          treemacs-sorting                       'alphabetic-asc
+          treemacs-space-between-root-nodes      t
+          treemacs-tag-follow-cleanup            t
+          treemacs-tag-follow-delay              1.5
+          treemacs-width                         26)
+	  
+    (treemacs-follow-mode t)
+    (treemacs-filewatch-mode t)
+    (treemacs-fringe-indicator-mode t)
+    (pcase (cons (not (null (executable-find "git")))
+                 (not (null treemacs-python-executable)))
+      (`(t . t)
+       (treemacs-git-mode 'deferred))
+      (`(t . _)
+       (treemacs-git-mode 'simple))))
+  :bind
+  (:map global-map
+        ("M-0"       . treemacs-select-window)
+        ("C-x t 1"   . treemacs-delete-other-windows)
+        ("C-x t t"   . treemacs)
+        ("C-x t B"   . treemacs-bookmark)
+        ("C-x t C-t" . treemacs-find-file)
+        ("C-x t M-t" . treemacs-find-tag)))
+(message "treemacs loaded")
+#+end_src
+
+* electric-pair-mode
+#+begin_src emacs-lisp
+  (electric-pair-mode 1)
+  (setq electric-pair-pairs
+  '(
+    (?\" . ?\")
+    (?\' . ?\')
+    (?\{ . ?\})))
+(message "electric-pair-mode loaded")
+#+end_src
+
+* move line with ALT
+#+begin_src emacs-lisp
+(defun move-line (n)
+  (interactive "p")
+  (setq col (current-column))
+  (beginning-of-line) (setq start (point))
+  (end-of-line) (forward-char) (setq end (point))
+  (let ((line-text (delete-and-extract-region start end)))
+    (forward-line n)
+    (insert line-text)
+    (forward-line -1)
+    (forward-char col)))
+(defun move-line-up (n)
+  (interactive "p")
+  (move-line (if (null n) -1 (- n))))
+(defun move-line-down (n)
+  (interactive "p")
+  (move-line (if (null n) 1 n)))
+(global-set-key (kbd "M-<up>") 'move-line-up)
+(global-set-key (kbd "M-<down>") 'move-line-down)
+(message "move line with ALT loaded")
+#+end_src
+
+ Dashboard
+#+BEGIN_SRC emacs-lisp
+  (use-package dashboard
+    :ensure t
+    :config
+    (dashboard-setup-startup-hook)
+    (setq dashboard-items '((recents  . 5)
+                            (bookmarks . 5)))
+    (setq dashboard-set-heading-icons t)
+    (setq dashboard-set-file-icons t)
+    (setq dashboard-startup-banner "~/.emacs.d/CondorEmacs.png")
+    (setq dashboard-banner-logo-title "Welcome to Condor Emacs!")
+    (setq dashboard-set-navigator t)
+    (setq dashboard-navigator-buttons
+          `(((,(all-the-icons-octicon "mark-github" :height 1.1 :v-adjust 0.0)
+              "Homepage"
+              "Browse homepage"
+              (lambda (&rest _) (browse-url "https://github.com/apemangr/Condor-Emacs/")))
+
+             (,(all-the-icons-faicon "archive" :height 1.1 :v-adjust 0.0)
+              "Update Packages"
+              "Click to updates your packages"
+              (lambda (&rest _) (auto-package-update-now)))
+
+             (,(all-the-icons-octicon "gear" :height 1.1 :v-adjust 0.0)
+              "Configuration"
+              "Click to config Condor Emacs"
+              (lambda (&rest _) (find-file "~/.emacs.d/config.org")))))))
+(message "dashboard loaded")
+#+END_SRC
+
+* Better scrolling
+#+BEGIN_SRC emacs-lisp
+  (setq scroll-step 1)
+  (setq scroll-margin 1)
+  (setq scroll-conservatively 101)
+  (setq scroll-up-aggressively 0.01)
+  (setq scroll-down-aggressively 0.01)
+  (setq auto-window-vscroll nil)
+  (setq fast-but-imprecise-scrolling nil)
+  (setq mouse-wheel-scroll-amount '(1 ((shift) . 1)))
+  (setq mouse-wheel-progressive-speed nil)
+  ;; Horizontal Scroll
+  (setq hscroll-step 1)
+  (setq hscroll-margin 1)
+(message "better scrolling loaded")
+#+END_SRC
+
+* Org-mode
+#+begin_src emacs-lisp
+  (setq org-startup-indented t
+        org-bullets-bullet-list '(" ") ;; no bullets, needs org-bullets package
+        org-ellipsis "  " ;; folding symbol
+        org-pretty-entities t
+        org-hide-emphasis-markers t
+        ;; show actually italicized text instead of /italicized text/
+        org-agenda-block-separator ""
+        org-fontify-whole-heading-line t
+        org-fontify-done-headline t
+        org-fontify-quote-and-verse-blocks t)
+
+  (add-hook 'org-mode-hook (lambda ()
+     "Beautify Org Checkbox Symbol"
+     (push '("[ ]" .  "☐") prettify-symbols-alist)
+     (push '("[X]" . "☑" ) prettify-symbols-alist)
+     (push '("[-]" . "❍" ) prettify-symbols-alist)
+     (push '("#+BEGIN_SRC" . "↦" ) prettify-symbols-alist)
+     (push '("#+END_SRC" . "⇤" ) prettify-symbols-alist)
+     (push '("#+BEGIN_EXAMPLE" . "↦" ) prettify-symbols-alist)
+     (push '("#+END_EXAMPLE" . "⇤" ) prettify-symbols-alist)
+     (push '("#+BEGIN_QUOTE" . "↦" ) prettify-symbols-alist)
+     (push '("#+END_QUOTE" . "⇤" ) prettify-symbols-alist)
+     (push '("#+begin_quote" . "↦" ) prettify-symbols-alist)
+     (push '("#+end_quote" . "⇤" ) prettify-symbols-alist)
+     (push '("#+begin_example" . "↦" ) prettify-symbols-alist)
+     (push '("#+end_example" . "⇤" ) prettify-symbols-alist)
+     (push '("#+begin_src" . "↦" ) prettify-symbols-alist)
+     (push '("#+end_src" . "⇤" ) prettify-symbols-alist)
+     (prettify-symbols-mode)))
+(message "orgmode loaded")
+#+end_src
+
+* python-mode pkg
+#+begin_src emacs-lisp
+(use-package python-mode
+  :ensure t
+  :hook (python-mode . lsp-deferred)
+  :custom
+  ;; NOTE: Set these if Python 3 is called "python3" on your system!
+  ;; (python-shell-interpreter "python3")
+  ;; (dap-python-executable "python3")
+  (dap-python-debugger 'debugpy)
+  :config
+  (require 'dap-python))
+        (use-package pyvenv
+          :config
+          (pyvenv-mode 1))
+(message "python-mode loaded")
+
+#+end_src
+
+* openwith
+#+begin_src emacs-lisp
+ (use-package openwith
+  :ensure t)
+  (openwith-mode t)
+  (setq openwith-associations '(("\\.pdf\\'" "evince" (file))))
+    (use-package iedit :ensure t)
+    (use-package goto-chg :ensure t)
+     (global-set-key (kbd "s-\[") 'goto-last-change)
+     (global-set-key (kbd "s-\]") 'goto-last-change-reverse)
+      (global-auto-revert-mode t)
+    (use-package cmake-ide :ensure t)
+    (cmake-ide-setup)
+        (use-package flycheck
+          :ensure t
+          :init (global-flycheck-mode))
+(message "openwith loaded")
+#+end_src
+
+* projectile
+#+begin_src emacs-lisp
+        (use-package projectile
+          :diminish projectile-mode
+          :config (projectile-mode)
+          :custom ((projectile-completion-system 'ivy))
+          :bind-keymap
+          ("C-c p" . projectile-command-map)
+          :init
+          ;; NOTE: Set this to the folder where you keep your Git repos!
+          (when (file-directory-p "~/dev/nim/NimQt")
+            (setq projectile-project-search-path '("~/dev/nim/NimQt")))
+          (setq projectile-switch-project-action #'projectile-dired))
+
+        (use-package counsel-projectile
+          :config (counsel-projectile-mode))
+(message "projectile loaded")
+#+end_src
+
+* magit
+#+begin_src emacs-lisp
+  (use-package magit
+          :custom
+          (magit-display-buffer-function #'magit-display-buffer-same-window-except-diff-v1))
+
+        ;; NOTE: Make sure to configure a GitHub token before using this package!
+        ;; - https://magit.vc/manual/forge/Token-Creation.html#Token-Creation
+        ;; - https://magit.vc/manual/ghub/Getting-Started.html#Getting-Started
+      (message "magit loaded")
+#+end_src
+
+* evil-nerd-commenter pkg
+#+begin_src emacs-lisp
+  (use-package evil-nerd-commenter
+          :bind ("M-/" . evilnc-comment-or-uncomment-lines))
+  (message "evil-nerd-commenter loaded")
+#+end_src
+
+* term
+#+begin_src emacs-lisp
+  (use-package term
+    :config
+    (setq explicit-shell-file-name "bash") ;; Change this to zsh, etc
+    ;;(setq explicit-zsh-args '())         ;; Use 'explicit-<shell>-args for shell-specific args
+
+    ;; Match the default Bash shell prompt.  Update this if you have a custom prompt
+    (setq term-prompt-regexp "^[^#$%>\n]*[#$%>] *"))
+  (message "term loaded")
+#+end_src
+
+* eshell
+#+begin_src emacs-lisp
+  (use-package eshell
+          :hook (eshell-first-time-mode . efs/configure-eshell)
+          :config
+
+          (with-eval-after-load 'esh-opt
+            (setq eshell-destroy-buffer-when-process-dies t)
+            (setq eshell-visual-commands '("htop" "zsh" "vim")))
+
+          (eshell-git-prompt-use-theme 'powerline))
+   (use-package eshell-git-prompt)
+    (defun efs/configure-eshell ()
+          ;; Save command history when commands are entered
+          (add-hook 'eshell-pre-command-hook 'eshell-save-some-history)
+
+          ;; Truncate buffer for performance
+          (add-to-list 'eshell-output-filter-functions 'eshell-truncate-buffer)
+
+          ;; Bind some useful keys for evil-mode
+          (evil-define-key '(normal insert visual) eshell-mode-map (kbd "C-r") 'counsel-esh-history)
+          (evil-define-key '(normal insert visual) eshell-mode-map (kbd "<home>") 'eshell-bol)
+          (evil-normalize-keymaps)
+
+          (setq eshell-history-size         10000
+                eshell-buffer-maximum-lines 10000
+                eshell-hist-ignoredups t
+                eshell-scroll-to-bottom-on-input t))
+(message "eshell loaded")
+
+#+end_src
+
+* nim
+#+begin_src emacs-lisp
+        (use-package nim-mode :ensure t)
+        ;; The `nimsuggest-path' will be set to the value of
+        (executable-find "nimsuggest")
+        ;;(setq nimsuggest-path "/opt/local/bin/nimsuggest")
+
+        (defun my--init-nim-mode ()
+          "Local init function for `nim-mode'."
+
+          ;; Just an example, by default these functions are
+          ;; already mapped to "C-c <" and "C-c >".
+          (local-set-key (kbd "M->") 'nim-indent-shift-right)
+          (local-set-key (kbd "M-<") 'nim-indent-shift-left)
+
+          ;; Make files in the nimble folder read only by default.
+          ;; This can prevent to edit them by accident.
+          (when (string-match "/\.nimble/" (or (buffer-file-name) "")) (read-only-mode 1))
+
+          ;; If you want to experiment, you can enable the following modes by
+          ;; uncommenting their line.
+          (nimsuggest-mode 1)
+          ;; Remember: Only enable either `flycheck-mode' or `flymake-mode' at the same time.
+          (flycheck-mode 1)
+          ;; (flymake-mode 1)
+
+          ;; The following modes are disabled for Nim files just for the case
+          ;; that they are enabled globally.
+          ;; Anything that is based on smie can cause problems.
+          (auto-fill-mode 0)
+          (electric-indent-local-mode 0)
+        )
+
+        (add-hook 'nim-mode-hook 'my--init-nim-mode)
+(message "nim loaded")
+#+end_src
+
+#+RESULTS:
+: nim loaded
+
+
+* auto insert
+#+begin_src emacs-lisp
+  (eval-after-load 'autoinsert
+  '(define-auto-insert '(nim-mode . "Nim skeleton")
+     '(
+       "#------------------------------------------------------\n "
+       "# " (file-name-nondirectory (buffer-file-name)) \n
+       "#" \n
+       "# By Merhab Noureddine\n"
+       "# On " (format-time-string "%A, %e %B %Y.") \n
+       "#" >  \n
+       "#------------------------------------------------------" \n
+       \n)))
+  (message "auto insert loaded")
+
+#+end_src
+
+
+* compile Nim with F9
+#+begin_src emacs-lisp
+   (defun mn-nim-compile()
+    (interactive)
+    (let* ((src (file-name-nondirectory (buffer-file-name)))
+           (exe (file-name-sans-extension src)))
+      (compile (concat "nim c -r --debugger:native --verbosity\:0 --excessiveStackTrace\:on " "./" src ))))
+  (add-hook 'nim-mode-hook
+            (lambda () (local-set-key (kbd "<f9>") #'mn-nim-compile)))
+ 
+(message "compile with F9 loaded")
+#+end_src
+
+* nim babilon
+#+begin_src emacs-lisp
+    (require 'ob-nim)
+  (org-babel-do-load-languages
+    'org-babel-load-languages
+    '((emacs-lisp . t) (org . t) (nim . t)))
+  (message "ob-nim babilon loaded")
+
+#+end_src
+
+* org agandan search files
+#+begin_src emacs-lisp
+    (require 'org-bullets)
+  (add-hook 'org-mode-hook (lambda () (org-bullets-mode 1)))
+
+  (setq org-agenda-files '("~/dev/orgs"
+                           "~/dev/orgs/brain"))
+(message "org agandan search loaded")
+
+#+end_src
+
+* auto tangle
+#+begin_src emacs-lisp
+  (use-package org-auto-tangle
+   :defer t
+   :hook (org-mode . org-auto-tangle-mode)
+   :config
+   (setq org-auto-tangle-default t))
+  (message "auto tangle loaded")
+
+#+end_src
+
+
+* org roam
+#+begin_src emacs-lisp
+  (use-package org-roam
+    :ensure t
+    :custom
+    (org-roam-directory "~/dev/orgs/roam")
+    :bind (("C-c n l" . org-roam-buffer-toggle)
+           ("C-c n f" . org-roam-node-find)
+           ("C-c n i" . org-roam-node-insert))
+    :config
+    (org-roam-setup))
+(message "org-roam loaded")
+#+end_src
+
+* ORG BRAIN
+#+begin_src emacs-lisp
+  (use-package org-brain :ensure t
+    :init
+    (setq org-brain-path "~/dev/orgs/brain")
+    ;; For Evil users
+    (with-eval-after-load 'evil
+      (evil-set-initial-state 'org-brain-visualize-mode 'emacs))
+    :config
+    (bind-key "C-c b" 'org-brain-prefix-map org-mode-map)
+    (setq org-id-track-globally t)
+    (setq org-id-locations-file "~/.emacs.d/.org-id-locations")
+    (add-hook 'before-save-hook #'org-brain-ensure-ids-in-buffer)
+    (push '("b" "Brain" plain (function org-brain-goto-end)
+            "* %i%?" :empty-lines 1)
+          org-capture-templates)
+    (setq org-brain-visualize-default-choices 'all)
+    (setq org-brain-title-max-length 12)
+    (setq org-brain-include-file-entries nil
+          org-brain-file-entries-use-title nil))
+
+  ;; Allows you to edit entries directly from org-brain-visualize
+  (use-package polymode
+    :config
+    (add-hook 'org-brain-visualize-mode-hook #'org-brain-polymode))
+
+  (message "org-brain loaded")
+#+end_src
